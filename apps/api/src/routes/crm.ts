@@ -1,8 +1,6 @@
 // CRM Routes — Pipeline management, notes, activities
 import type { FastifyInstance } from 'fastify';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from '../lib/prisma';
 
 export async function crmRoutes(app: FastifyInstance) {
   // Pipeline overview (leads grouped by stage)

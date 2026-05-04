@@ -1,9 +1,7 @@
 // Search Route — The main pipeline: search → scrape → score → pitch
 import type { FastifyInstance } from 'fastify';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import { leadQueue } from '@leadforge/workers';
-
-const prisma = new PrismaClient();
 
 export async function searchRoutes(app: FastifyInstance) {
   // Full search pipeline
@@ -26,13 +24,13 @@ export async function searchRoutes(app: FastifyInstance) {
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) return reply.status(404).send({ error: 'User not found' });
 
-    const searchLimits = { FREE: 10, STARTER: 200, PRO: 1000, AGENCY: 5000 };
+    const searchLimits: Record<string, number> = { FREE: 10, STARTER: 200, PRO: 1000, AGENCY: 5000 };
     const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
     const searchesThisMonth = await prisma.search.count({
       where: { userId, createdAt: { gte: monthStart } },
     });
 
-    if (searchesThisMonth >= searchLimits[user.plan]) {
+    if (searchesThisMonth >= (searchLimits[user.plan] ?? 0)) {
       return reply.status(429).send({
         error: 'Search limit reached for your plan',
         limit: searchLimits[user.plan],
@@ -102,7 +100,7 @@ export async function searchRoutes(app: FastifyInstance) {
         userId,
         ...(minScore ? { overallScore: { gte: minScore } } : {}),
       },
-      orderBy: { [sortField]: 'desc' },
+      orderBy: { [sortField!]: 'desc' },
       take: limit || 50,
     });
 

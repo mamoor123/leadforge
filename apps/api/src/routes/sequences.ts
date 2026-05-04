@@ -1,9 +1,7 @@
 // Outreach Sequences Route
 import type { FastifyInstance } from 'fastify';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import { generateEmailPitch, generateLinkedInPitch, generateSMSPitch, type OutreachContext } from '@leadforge/shared/services/outreach-engine';
-
-const prisma = new PrismaClient();
 
 export async function sequenceRoutes(app: FastifyInstance) {
   // List sequences

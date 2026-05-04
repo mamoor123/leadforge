@@ -13,6 +13,7 @@
     "@fastify/jwt": "^8.0.0",
     "@leadforge/db": "workspace:*",
     "@leadforge/shared": "workspace:*",
+    "@leadforge/workers": "workspace:*",
     "fastify": "^4.27.0"
   },
   "devDependencies": {

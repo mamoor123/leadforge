@@ -1,8 +1,6 @@
 // Billing Routes — Stripe integration stubs
 import type { FastifyInstance } from 'fastify';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from '../lib/prisma';
 
 export async function billingRoutes(app: FastifyInstance) {
   // Get current plan

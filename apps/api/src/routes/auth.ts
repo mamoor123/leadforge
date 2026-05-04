@@ -1,8 +1,6 @@
 // Auth Routes — Register, Login, JWT
 import type { FastifyInstance } from 'fastify';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from '../lib/prisma';
 
 export async function authRoutes(app: FastifyInstance) {
   // Register

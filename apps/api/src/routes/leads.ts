@@ -1,8 +1,6 @@
 // Lead Routes — CRUD, filtering, detail
 import type { FastifyInstance } from 'fastify';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from '../lib/prisma';
 
 export async function leadRoutes(app: FastifyInstance) {
   // List leads with filters

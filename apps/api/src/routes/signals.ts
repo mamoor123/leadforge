@@ -1,8 +1,6 @@
 // Signal Routes — List and manage signals
 import type { FastifyInstance } from 'fastify';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from '../lib/prisma';
 
 export async function signalRoutes(app: FastifyInstance) {
   // List active signals

@@ -1,8 +1,7 @@
 // Report Routes — Generate audit reports
 import type { FastifyInstance } from 'fastify';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from '../lib/prisma';
+import { generateReportData } from '@leadforge/shared/services/outreach-engine';
 
 export async function reportRoutes(app: FastifyInstance) {
   // Generate report data for a lead
@@ -15,9 +14,6 @@ export async function reportRoutes(app: FastifyInstance) {
       include: { signals: true },
     });
     if (!lead) return reply.status(404).send({ error: 'Lead not found' });
-
-    // Import report generator
-    const { generateReportData } = await import('@leadforge/shared/services/outreach-engine');
 
     const reportData = generateReportData({
       businessName: lead.businessName,
