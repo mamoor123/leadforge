@@ -1,7 +1,7 @@
 // packages/db/prisma/seed.ts
 // Run with: pnpm db:seed
 
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Plan, Channel } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -15,7 +15,7 @@ async function main() {
     create: {
       email: 'demo@leadforge.io',
       name: 'Demo User',
-      plan: 'PRO',
+      plan: Plan.PRO,
     },
   });
 
@@ -26,7 +26,7 @@ async function main() {
     data: {
       userId: user.id,
       name: 'Website Audit Outreach',
-      channel: 'EMAIL',
+      channel: Channel.EMAIL,
       steps: {
         create: [
           {

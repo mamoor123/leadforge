@@ -11,14 +11,14 @@ datasource db {
 // ─── Users & Auth ───────────────────────────────────────────
 
 model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
-  name          String?
-  passwordHash  String?
-  plan          Plan      @default(FREE)
-  stripeCustomerId String? @unique
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id               String    @id @default(cuid())
+  email            String    @unique
+  name             String?
+  passwordHash     String?   @map("password_hash")
+  plan             Plan      @default(FREE)
+  stripeCustomerId String?   @unique @map("stripe_customer_id")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
 
   searches      Search[]
   leads         Lead[]
@@ -26,6 +26,8 @@ model User {
   campaigns     Campaign[]
   signalMonitors SignalMonitor[]
   apiKeys       ApiKey[]
+
+  @@map("users")
 }
 
 enum Plan {
@@ -36,42 +38,48 @@ enum Plan {
 }
 
 model ApiKey {
-  id        String   @id @default(cuid())
-  key       String   @unique
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id        String    @id @default(cuid())
+  key       String    @unique
+  userId    String    @map("user_id")
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   name      String?
-  lastUsed  DateTime?
-  createdAt DateTime @default(now())
+  lastUsed  DateTime? @map("last_used")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@map("api_keys")
 }
 
 // ─── Searches ───────────────────────────────────────────────
 
 model Search {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  niche     String
-  city      String
-  state     String?
-  country   String   @default("US")
-  resultCount Int    @default(0)
-  createdAt DateTime @default(now())
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  niche       String
+  city        String
+  state       String?
+  country     String   @default("US")
+  resultCount Int      @default(0) @map("result_count")
+  createdAt   DateTime @default(now()) @map("created_at")
 
-  leads     Lead[]
+  leads Lead[]
+
+  @@index([userId])
+  @@map("searches")
 }
 
 // ─── Leads ──────────────────────────────────────────────────
 
 model Lead {
   id              String    @id @default(cuid())
-  userId          String
+  userId          String    @map("user_id")
   user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  searchId        String?
-  search          Search?   @relation(fields: [searchId], references: [id])
+  searchId        String?   @map("search_id")
+  search          Search?   @relation(fields: [searchId], references: [id], onDelete: SetNull)
 
   // Basic info
-  businessName    String
+  businessName    String    @map("business_name")
   niche           String
   website         String?
   phone           String?
@@ -83,64 +91,66 @@ model Lead {
   country         String?
 
   // Google data
-  googlePlaceId   String?
-  googleRating    Float?
-  googleReviewCount Int?
-  googleUrl       String?
+  googlePlaceId     String?   @unique @map("google_place_id")
+  googleRating      Float?    @map("google_rating")
+  googleReviewCount Int?      @map("google_review_count")
+  googleUrl         String?   @map("google_url")
 
   // Social
-  linkedinUrl     String?
-  facebookUrl     String?
-  instagramUrl    String?
-  twitterUrl      String?
-  yelpUrl         String?
+  linkedinUrl     String?   @map("linkedin_url")
+  facebookUrl     String?   @map("facebook_url")
+  instagramUrl    String?   @map("instagram_url")
+  twitterUrl      String?   @map("twitter_url")
+  yelpUrl         String?   @map("yelp_url")
 
   // Decision maker
-  contactName     String?
-  contactEmail    String?
-  contactTitle    String?
-  contactLinkedin String?
+  contactName     String?   @map("contact_name")
+  contactEmail    String?   @map("contact_email")
+  contactTitle    String?   @map("contact_title")
+  contactLinkedin String?   @map("contact_linkedin")
 
   // Tech stack
   cms             String?
   analytics       String?
   hosting         String?
-  adTech          String[]
+  adTech          String[]  @map("ad_tech")
 
   // Scores (0-100)
-  overallScore    Int       @default(0)
-  websiteScore    Int       @default(0)
-  seoScore        Int       @default(0)
-  socialScore     Int       @default(0)
-  reviewScore     Int       @default(0)
-  signalScore     Int       @default(0)  // NEW: signal-based score
+  overallScore    Int       @default(0) @map("overall_score")
+  websiteScore    Int       @default(0) @map("website_score")
+  seoScore        Int       @default(0) @map("seo_score")
+  socialScore     Int       @default(0) @map("social_score")
+  reviewScore     Int       @default(0) @map("review_score")
+  signalScore     Int       @default(0) @map("signal_score")
 
   // Analysis
-  websiteIssues   Json?     // structured list of issues found
-  seoIssues       Json?
-  analysisData    Json?     // full analysis dump
-  signalData      Json?     // recent signals detected
+  websiteIssues   Json?     @map("website_issues")
+  seoIssues       Json?     @map("seo_issues")
+  analysisData    Json?     @map("analysis_data")
+  signalData      Json?     @map("signal_data")
 
   // CRM
-  pipelineStage   PipelineStage @default(NEW)
+  pipelineStage   PipelineStage @default(NEW) @map("pipeline_stage")
   notes           String?
-  lastContactedAt DateTime?
+  lastContactedAt DateTime?     @map("last_contacted_at")
   tags            String[]
 
   // Meta
-  enrichedAt      DateTime?
-  scoredAt        DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  enrichedAt      DateTime? @map("enriched_at")
+  scoredAt        DateTime? @map("scored_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
 
   // Relations
-  activities      Activity[]
-  sequenceEnrollments SequenceEnrollment[]
-  signals         Signal[]
+  activities           Activity[]
+  sequenceEnrollments  SequenceEnrollment[]
+  signals              Signal[]
 
   @@index([userId, overallScore(sort: Desc)])
   @@index([userId, pipelineStage])
   @@index([userId, niche, city])
+  @@index([searchId])
+  @@map("leads")
 }
 
 enum PipelineStage {
@@ -158,18 +168,19 @@ enum PipelineStage {
 
 model Signal {
   id          String      @id @default(cuid())
-  leadId      String
+  leadId      String      @map("lead_id")
   lead        Lead        @relation(fields: [leadId], references: [id], onDelete: Cascade)
   type        SignalType
-  severity    Int         @default(50) // 0-100, higher = more urgent
+  severity    Int         @default(50)
   title       String
   description String?
   data        Json?
-  detectedAt  DateTime    @default(now())
-  expiresAt   DateTime?   // time-decay: older signals lose weight
+  detectedAt  DateTime    @default(now()) @map("detected_at")
+  expiresAt   DateTime?   @map("expires_at")
 
   @@index([leadId, detectedAt(sort: Desc)])
   @@index([type, detectedAt(sort: Desc)])
+  @@map("signals")
 }
 
 enum SignalType {
@@ -190,18 +201,20 @@ enum SignalType {
 }
 
 model SignalMonitor {
-  id          String      @id @default(cuid())
-  userId      String
-  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  niche       String
-  city        String
-  state       String?
-  frequency   MonitorFrequency @default(DAILY)
-  isActive    Boolean     @default(true)
-  lastRunAt   DateTime?
-  createdAt   DateTime    @default(now())
+  id        String           @id @default(cuid())
+  userId    String           @map("user_id")
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  niche     String
+  city      String
+  state     String?
+  frequency MonitorFrequency @default(DAILY)
+  isActive  Boolean          @default(true) @map("is_active")
+  lastRunAt DateTime?        @map("last_run_at")
+  createdAt DateTime         @default(now()) @map("created_at")
 
   @@unique([userId, niche, city])
+  @@index([userId])
+  @@map("signal_monitors")
 }
 
 enum MonitorFrequency {
@@ -213,17 +226,20 @@ enum MonitorFrequency {
 // ─── Outreach Sequences ─────────────────────────────────────
 
 model Sequence {
-  id          String    @id @default(cuid())
-  userId      String
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name        String
-  channel     Channel   @default(EMAIL)
-  isActive    Boolean   @default(true)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  channel   Channel  @default(EMAIL)
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   steps       SequenceStep[]
   enrollments SequenceEnrollment[]
+
+  @@index([userId])
+  @@map("sequences")
 }
 
 enum Channel {
@@ -233,32 +249,35 @@ enum Channel {
 }
 
 model SequenceStep {
-  id          String    @id @default(cuid())
-  sequenceId  String
-  sequence    Sequence  @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
-  order       Int
-  subject     String?   // for email
-  bodyTemplate String   // AI-personalized at send time
-  delayDays   Int       @default(0) // days after previous step
-  isActive    Boolean   @default(true)
+  id           String   @id @default(cuid())
+  sequenceId   String   @map("sequence_id")
+  sequence     Sequence @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
+  order        Int
+  subject      String?
+  bodyTemplate String   @map("body_template")
+  delayDays    Int      @default(0) @map("delay_days")
+  isActive     Boolean  @default(true) @map("is_active")
 
   @@unique([sequenceId, order])
+  @@map("sequence_steps")
 }
 
 model SequenceEnrollment {
-  id          String    @id @default(cuid())
-  sequenceId  String
-  sequence    Sequence  @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
-  leadId      String
-  lead        Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
-  currentStep Int       @default(0)
+  id          String           @id @default(cuid())
+  sequenceId  String           @map("sequence_id")
+  sequence    Sequence         @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
+  leadId      String           @map("lead_id")
+  lead        Lead             @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  currentStep Int              @default(0) @map("current_step")
   status      EnrollmentStatus @default(ACTIVE)
-  enrolledAt  DateTime  @default(now())
-  completedAt DateTime?
-  repliedAt   DateTime?
+  enrolledAt  DateTime         @default(now()) @map("enrolled_at")
+  completedAt DateTime?        @map("completed_at")
+  repliedAt   DateTime?        @map("replied_at")
 
   @@unique([sequenceId, leadId])
+  @@index([leadId])
   @@index([status, currentStep])
+  @@map("sequence_enrollments")
 }
 
 enum EnrollmentStatus {
@@ -273,16 +292,19 @@ enum EnrollmentStatus {
 // ─── Campaigns (bulk operations) ────────────────────────────
 
 model Campaign {
-  id          String    @id @default(cuid())
-  userId      String
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name        String
-  niche       String
-  city        String
-  status      CampaignStatus @default(DRAFT)
-  leadCount   Int       @default(0)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id        String         @id @default(cuid())
+  userId    String         @map("user_id")
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  niche     String
+  city      String
+  status    CampaignStatus @default(DRAFT)
+  leadCount Int            @default(0) @map("lead_count")
+  createdAt DateTime       @default(now()) @map("created_at")
+  updatedAt DateTime       @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@map("campaigns")
 }
 
 enum CampaignStatus {
@@ -295,15 +317,17 @@ enum CampaignStatus {
 // ─── Activity Log ───────────────────────────────────────────
 
 model Activity {
-  id        String   @id @default(cuid())
-  leadId    String
-  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  id        String       @id @default(cuid())
+  leadId    String       @map("lead_id")
+  lead      Lead         @relation(fields: [leadId], references: [id], onDelete: Cascade)
   type      ActivityType
   detail    String?
   metadata  Json?
-  createdAt DateTime @default(now())
+  createdAt DateTime     @default(now()) @map("created_at")
 
   @@index([leadId, createdAt(sort: Desc)])
+  @@index([type])
+  @@map("activities")
 }
 
 enum ActivityType {
