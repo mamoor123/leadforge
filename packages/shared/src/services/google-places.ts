@@ -23,9 +23,14 @@ interface SearchParams {
   maxResults?: number; // default 20
 }
 
-const GOOGLE_API_KEY = process.env.GOOGLE_PLACES_API_KEY!;
+const GOOGLE_API_KEY = process.env.GOOGLE_PLACES_API_KEY;
 
 export async function searchBusinesses(params: SearchParams): Promise<PlaceResult[]> {
+  if (!GOOGLE_API_KEY) {
+    throw new Error('GOOGLE_PLACES_API_KEY environment variable is not set');
+  }
+
+  const apiKey = GOOGLE_API_KEY; // local ref for type narrowing
   const query = `${params.niche} in ${params.city}${params.state ? ', ' + params.state : ''}`;
   const results: PlaceResult[] = [];
   let nextPageToken: string | undefined;
@@ -33,7 +38,7 @@ export async function searchBusinesses(params: SearchParams): Promise<PlaceResul
   // Text search for broader results
   const searchUrl = new URL('https://maps.googleapis.com/maps/api/place/textsearch/json');
   searchUrl.searchParams.set('query', query);
-  searchUrl.searchParams.set('key', GOOGLE_API_KEY);
+  searchUrl.searchParams.set('key', apiKey);
   if (params.radius) searchUrl.searchParams.set('radius', String(params.radius));
 
   let attempts = 0;
@@ -60,8 +65,8 @@ export async function searchBusinesses(params: SearchParams): Promise<PlaceResul
         address: place.formatted_address,
         phone: place.formatted_phone_number || '',
         website: null, // need details call for this
-        rating: place.rating || null,
-        reviewCount: place.user_ratings_total || null,
+        rating: place.rating ?? null,
+        reviewCount: place.user_ratings_total ?? null,
         latitude: place.geometry.location.lat,
         longitude: place.geometry.location.lng,
         types: place.types || [],
@@ -86,7 +91,7 @@ async function enrichPlaceDetails(place: PlaceResult): Promise<PlaceResult> {
     const url = new URL('https://maps.googleapis.com/maps/api/place/details/json');
     url.searchParams.set('place_id', place.placeId);
     url.searchParams.set('fields', 'website,formatted_phone_number,url');
-    url.searchParams.set('key', GOOGLE_API_KEY);
+    url.searchParams.set('key', GOOGLE_API_KEY!); // safe: only called after searchBusinesses validates key
 
     const response = await fetch(url.toString());
     const data = await response.json() as any;

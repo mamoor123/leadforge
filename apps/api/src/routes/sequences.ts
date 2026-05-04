@@ -78,7 +78,12 @@ export async function sequenceRoutes(app: FastifyInstance) {
           data: { pipelineStage: 'CONTACTED', lastContactedAt: new Date() },
         });
       } catch (e) {
-        // Skip duplicates
+        // Skip duplicate enrollments (unique constraint on sequenceId + leadId)
+        if ((e as any)?.code === 'P2002') {
+          // Prisma unique constraint violation — expected, skip silently
+        } else {
+          console.error(`Failed to enroll lead ${leadId}:`, (e as Error).message);
+        }
       }
     }
 
@@ -86,12 +91,12 @@ export async function sequenceRoutes(app: FastifyInstance) {
   });
 
   // Generate AI pitch for a lead
-  app.post('/generate-pitch', { preHandler: [app.authenticate] }, async (request) => {
+  app.post('/generate-pitch', { preHandler: [app.authenticate] }, async (request, reply) => {
     const { leadId, channel } = request.body as { leadId: string; channel: string };
     const userId = (request.user as any).id;
 
     const lead = await prisma.lead.findFirst({ where: { id: leadId, userId } });
-    if (!lead) return { error: 'Lead not found' };
+    if (!lead) return reply.status(404).send({ error: 'Lead not found' });
 
     const user = await prisma.user.findUnique({ where: { id: userId } });
 
@@ -122,7 +127,7 @@ export async function sequenceRoutes(app: FastifyInstance) {
   });
 
   // Get sequence stats
-  app.get('/:sequenceId/stats', { preHandler: [app.authenticate] }, async (request) => {
+  app.get('/:sequenceId/stats', { preHandler: [app.authenticate] }, async (request, reply) => {
     const { sequenceId } = request.params as { sequenceId: string };
     const userId = (request.user as any).id;
 
@@ -134,7 +139,7 @@ export async function sequenceRoutes(app: FastifyInstance) {
       },
     });
 
-    if (!sequence) return { error: 'Sequence not found' };
+    if (!sequence) return reply.status(404).send({ error: 'Sequence not found' });
 
     const enrollments = sequence.enrollments;
     return {

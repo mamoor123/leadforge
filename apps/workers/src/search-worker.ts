@@ -7,7 +7,7 @@ import { searchBusinesses } from '@leadforge/shared/services/google-places';
 import { analyzeWebsite } from '@leadforge/shared/services/website-analyzer';
 import { scoreLead } from '@leadforge/shared/services/lead-scorer';
 import { detectSignals, aggregateSignals } from '@leadforge/shared/services/signal-engine';
-import { generateEmailPitch, generateReportData } from '@leadforge/shared/services/outreach-engine';
+import { generateEmailPitch } from '@leadforge/shared/services/outreach-engine';
 
 const prisma = new PrismaClient();
 const connection = { host: process.env.REDIS_HOST || 'localhost', port: 6379 };
@@ -130,9 +130,12 @@ const searchWorker = new Worker('lead-processing', async (job) => {
             facebookUrl: websiteAnalysis?.social.facebookUrl,
             instagramUrl: websiteAnalysis?.social.instagramUrl,
             twitterUrl: websiteAnalysis?.social.twitterUrl,
+            yelpUrl: websiteAnalysis?.social.yelpUrl,
             // Extract tech
             cms: websiteAnalysis?.techStack.cms,
-            analytics: websiteAnalysis?.techStack.analytics,
+            analytics: websiteAnalysis?.techStack.analytics?.[0] || null,
+            hosting: websiteAnalysis?.techStack.hosting,
+            adTech: websiteAnalysis?.techStack.advertising || [],
             // Save pitch
             enrichedAt: new Date(),
             scoredAt: new Date(),
@@ -190,7 +193,9 @@ const searchWorker = new Worker('lead-processing', async (job) => {
         name: l.businessName,
         score: l.overallScore,
       })),
-      avgScore: Math.round(leads.reduce((sum, l) => sum + l.overallScore, 0) / leads.length),
+      avgScore: leads.length > 0
+        ? Math.round(leads.reduce((sum, l) => sum + l.overallScore, 0) / leads.length)
+        : 0,
       hotLeads: leads.filter(l => l.overallScore >= 70).length,
     };
   } catch (error) {

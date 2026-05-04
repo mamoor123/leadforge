@@ -7,6 +7,50 @@ import { generateEmailPitch, generateLinkedInPitch, generateSMSPitch, type Outre
 import { enrichContact } from './contact-enrichment';
 import { checkDeliverability, getOptimalSendTime, type SendingAccount } from './deliverability-engine';
 
+// ─── Timezone Helper ────────────────────────────────────────
+
+function getTimezoneForState(state: string | null | undefined): string | null {
+  if (!state) return null;
+  const stateTimezones: Record<string, string> = {
+    'AL': 'America/Chicago', 'AK': 'America/Anchorage', 'AZ': 'America/Phoenix',
+    'AR': 'America/Chicago', 'CA': 'America/Los_Angeles', 'CO': 'America/Denver',
+    'CT': 'America/New_York', 'DE': 'America/New_York', 'FL': 'America/New_York',
+    'GA': 'America/New_York', 'HI': 'Pacific/Honolulu', 'ID': 'America/Boise',
+    'IL': 'America/Chicago', 'IN': 'America/Indiana/Indianapolis', 'IA': 'America/Chicago',
+    'KS': 'America/Chicago', 'KY': 'America/New_York', 'LA': 'America/Chicago',
+    'ME': 'America/New_York', 'MD': 'America/New_York', 'MA': 'America/New_York',
+    'MI': 'America/Detroit', 'MN': 'America/Chicago', 'MS': 'America/Chicago',
+    'MO': 'America/Chicago', 'MT': 'America/Denver', 'NE': 'America/Chicago',
+    'NV': 'America/Los_Angeles', 'NH': 'America/New_York', 'NJ': 'America/New_York',
+    'NM': 'America/Denver', 'NY': 'America/New_York', 'NC': 'America/New_York',
+    'ND': 'America/Chicago', 'OH': 'America/New_York', 'OK': 'America/Chicago',
+    'OR': 'America/Los_Angeles', 'PA': 'America/New_York', 'RI': 'America/New_York',
+    'SC': 'America/New_York', 'SD': 'America/Chicago', 'TN': 'America/Chicago',
+    'TX': 'America/Chicago', 'UT': 'America/Denver', 'VT': 'America/New_York',
+    'VA': 'America/New_York', 'WA': 'America/Los_Angeles', 'WV': 'America/New_York',
+    'WI': 'America/Chicago', 'WY': 'America/Denver',
+    // Full names
+    'Alabama': 'America/Chicago', 'Alaska': 'America/Anchorage', 'Arizona': 'America/Phoenix',
+    'Arkansas': 'America/Chicago', 'California': 'America/Los_Angeles', 'Colorado': 'America/Denver',
+    'Connecticut': 'America/New_York', 'Delaware': 'America/New_York', 'Florida': 'America/New_York',
+    'Georgia': 'America/New_York', 'Hawaii': 'Pacific/Honolulu', 'Idaho': 'America/Boise',
+    'Illinois': 'America/Chicago', 'Indiana': 'America/Indiana/Indianapolis', 'Iowa': 'America/Chicago',
+    'Kansas': 'America/Chicago', 'Kentucky': 'America/New_York', 'Louisiana': 'America/Chicago',
+    'Maine': 'America/New_York', 'Maryland': 'America/New_York', 'Massachusetts': 'America/New_York',
+    'Michigan': 'America/Detroit', 'Minnesota': 'America/Chicago', 'Mississippi': 'America/Chicago',
+    'Missouri': 'America/Chicago', 'Montana': 'America/Denver', 'Nebraska': 'America/Chicago',
+    'Nevada': 'America/Los_Angeles', 'New Hampshire': 'America/New_York', 'New Jersey': 'America/New_York',
+    'New Mexico': 'America/Denver', 'New York': 'America/New_York', 'North Carolina': 'America/New_York',
+    'North Dakota': 'America/Chicago', 'Ohio': 'America/New_York', 'Oklahoma': 'America/Chicago',
+    'Oregon': 'America/Los_Angeles', 'Pennsylvania': 'America/New_York', 'Rhode Island': 'America/New_York',
+    'South Carolina': 'America/New_York', 'South Dakota': 'America/Chicago', 'Tennessee': 'America/Chicago',
+    'Texas': 'America/Chicago', 'Utah': 'America/Denver', 'Vermont': 'America/New_York',
+    'Virginia': 'America/New_York', 'Washington': 'America/Los_Angeles', 'West Virginia': 'America/New_York',
+    'Wisconsin': 'America/Chicago', 'Wyoming': 'America/Denver',
+  };
+  return stateTimezones[state] || stateTimezones[state.toUpperCase()] || null;
+}
+
 export interface AgentConfig {
   userId: string;
   userName: string;
@@ -398,7 +442,7 @@ export class ForgeAgent {
 
     // Apply optimal send time
     const sendTime = getOptimalSendTime(
-      lead.state || 'America/Chicago',
+      getTimezoneForState(lead.state) || 'America/Chicago',
       lead.niche,
     );
 

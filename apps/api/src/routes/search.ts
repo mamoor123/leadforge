@@ -1,5 +1,9 @@
 // Search Route — The main pipeline: search → scrape → score → pitch
 import type { FastifyInstance } from 'fastify';
+import { PrismaClient } from '@prisma/client';
+import { leadQueue } from '@leadforge/workers';
+
+const prisma = new PrismaClient();
 
 export async function searchRoutes(app: FastifyInstance) {
   // Full search pipeline
@@ -42,7 +46,6 @@ export async function searchRoutes(app: FastifyInstance) {
     });
 
     // Dispatch to worker (async pipeline)
-    const { leadQueue } = await import('@leadforge/workers');
     const job = await leadQueue.add('search-and-enrich', {
       searchId: search.id,
       userId,
@@ -62,7 +65,7 @@ export async function searchRoutes(app: FastifyInstance) {
   });
 
   // Check search status
-  app.get('/:searchId/status', { preHandler: [app.authenticate] }, async (request) => {
+  app.get('/:searchId/status', { preHandler: [app.authenticate] }, async (request, reply) => {
     const { searchId } = request.params as { searchId: string };
     const userId = (request.user as any).id;
 
@@ -71,7 +74,7 @@ export async function searchRoutes(app: FastifyInstance) {
       include: { leads: { select: { id: true, businessName: true, overallScore: true } } },
     });
 
-    if (!search) return { error: 'Search not found' };
+    if (!search) return reply.status(404).send({ error: 'Search not found' });
 
     return {
       search,
@@ -90,19 +93,19 @@ export async function searchRoutes(app: FastifyInstance) {
       limit?: number;
     };
 
+    const validSortFields = ['overallScore', 'businessName', 'createdAt'] as const;
+    const sortField = validSortFields.includes(sortBy as any) ? sortBy : 'overallScore';
+
     const leads = await prisma.lead.findMany({
       where: {
         searchId,
         userId,
         ...(minScore ? { overallScore: { gte: minScore } } : {}),
       },
-      orderBy: { overallScore: 'desc' },
+      orderBy: { [sortField]: 'desc' },
       take: limit || 50,
     });
 
     return { leads, count: leads.length };
   });
 }
-
-import { PrismaClient } from '@prisma/client';
-const prisma = new PrismaClient();

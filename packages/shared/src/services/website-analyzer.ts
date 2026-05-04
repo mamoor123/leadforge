@@ -122,6 +122,7 @@ export interface ContentData {
   hasPricing: boolean;
   hasFAQ: boolean;
   hasAboutPage: boolean;
+  hasMenu: boolean;
   copyrightYear: number | null;
   isOutdated: boolean; // copyright year < current year - 1
 }
@@ -210,15 +211,15 @@ async function analyzePageSpeed(url: string): Promise<PageSpeedData> {
     const audits = lighthouse.audits || {};
 
     return {
-      loadTime: (audits['interactive']?.numericValue as number) || null,
-      pageSize: (audits['total-byte-weight']?.numericValue as number) || null,
-      requests: (audits['network-requests']?.details?.items?.length as number) || null,
+      loadTime: (audits['interactive']?.numericValue as number) ?? null,
+      pageSize: (audits['total-byte-weight']?.numericValue as number) ?? null,
+      requests: (audits['network-requests']?.details?.items?.length as number) ?? null,
       score: Math.round((lighthouse.categories?.performance?.score || 0) * 100),
       mobileScore: Math.round((lighthouse.categories?.performance?.score || 0) * 100),
       coreWebVitals: {
-        lcp: audits['largest-contentful-paint']?.numericValue as number || null,
-        fid: audits['max-potential-fid']?.numericValue as number || null,
-        cls: audits['cumulative-layout-shift']?.numericValue as number || null,
+        lcp: (audits['largest-contentful-paint']?.numericValue as number) ?? null,
+        fid: (audits['max-potential-fid']?.numericValue as number) ?? null,
+        cls: (audits['cumulative-layout-shift']?.numericValue as number) ?? null,
       },
     };
   } catch {
@@ -487,6 +488,7 @@ function analyzeContent(html: string): ContentData {
     hasPricing: /pricing|price|plans/i.test(html),
     hasFAQ: /faq|frequently.*asked/i.test(html),
     hasAboutPage: /about.*us|our.*story|our.*team/i.test(html),
+    hasMenu: /menu|food.*list|wine.*list|drink.*list/i.test(html),
     copyrightYear,
     isOutdated: copyrightYear !== null && copyrightYear < currentYear - 1,
   };

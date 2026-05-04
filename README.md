@@ -34,9 +34,10 @@ pnpm install
 # 2. Set up database
 cp .env.example .env
 # Edit .env with your API keys
-pnpm db:migrate
+pnpm db:generate    # Generate Prisma client
+pnpm db:migrate     # Run migrations
 
-# 3. Start dev servers
+# 3. Start dev servers (all at once via Turbo)
 pnpm dev
 ```
 
@@ -45,14 +46,15 @@ pnpm dev
 ```
 lead-gen-saas/
 ├── apps/
-│   ├── web/          # Next.js frontend
-│   ├── api/          # Fastify API server
-│   └── workers/      # BullMQ background workers
+│   ├── web/          # Next.js frontend (dashboard, lead board, CRM)
+│   ├── api/          # Fastify API server (REST endpoints)
+│   └── workers/      # BullMQ background workers (search, enrich, score)
 ├── packages/
-│   ├── db/           # Prisma schema & migrations
-│   ├── shared/       # Core services (analyzer, scorer, signals)
-│   └── ui/           # Shared UI components
-└── scripts/
+│   ├── db/           # Prisma schema, migrations, client export
+│   └── shared/       # Core services (analyzer, scorer, signals, outreach)
+├── turbo.json        # Turborepo config
+├── tsconfig.json     # Root TypeScript config
+└── pnpm-workspace.yaml
 ```
 
 ## Core Services
@@ -93,14 +95,19 @@ lead-gen-saas/
 
 | Method | Endpoint | Description |
 |---|---|---|
+| POST | `/api/auth/register` | Register a new user |
+| POST | `/api/auth/login` | Login and get JWT |
 | POST | `/api/search` | Start a lead search (async pipeline) |
-| GET | `/api/search/:id/leads` | Get scored leads from a search |
+| GET | `/api/search/:searchId/status` | Check search progress |
+| GET | `/api/search/:searchId/leads` | Get scored leads from a search |
 | GET | `/api/leads` | List all leads with filters |
 | GET | `/api/leads/:id` | Get lead detail with signals |
 | POST | `/api/sequences` | Create outreach sequence |
 | POST | `/api/sequences/:id/enroll` | Enroll leads in sequence |
 | POST | `/api/sequences/generate-pitch` | AI-generate a pitch |
+| GET | `/api/sequences/:id/stats` | Get sequence performance stats |
 | GET | `/api/signals` | List active signals |
+| GET | `/health` | Health check |
 
 ## Pricing Strategy
 
@@ -113,14 +120,14 @@ lead-gen-saas/
 
 ## Tech Stack
 
-- **Frontend:** Next.js 14, Tailwind CSS, shadcn/ui
-- **API:** Node.js, Fastify, tRPC
+- **Frontend:** Next.js 14, Tailwind CSS, React
+- **API:** Node.js, Fastify, JWT auth
 - **Database:** PostgreSQL, Prisma ORM
 - **Queue:** BullMQ, Redis
 - **Scraping:** Playwright, Crawlee
 - **AI:** OpenAI / Claude API
 - **Email:** Resend
-- **Auth:** Clerk / NextAuth
+- **Auth:** Fastify JWT (built-in)
 - **Payments:** Stripe
 - **Hosting:** Vercel + Railway/Fly.io
 

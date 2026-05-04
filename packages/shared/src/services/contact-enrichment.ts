@@ -144,11 +144,11 @@ async function extractFromWebsite(url: string): Promise<EnrichedContact[]> {
     // Extract LinkedIn URLs
     const linkedinMatch = html.match(/https?:\/\/(?:www\.)?linkedin\.com\/(?:in|company)\/[^\s"'<>]+/gi);
     if (linkedinMatch) {
-      for (const url of linkedinMatch.slice(0, 2)) {
+      for (const linkedinUrl of linkedinMatch.slice(0, 2)) {
         // Try to get name from LinkedIn URL
-        const slug = url.split('/').pop();
+        const slug = linkedinUrl.split('/').pop();
         if (contacts.length > 0 && !contacts[0].linkedinUrl) {
-          contacts[0].linkedinUrl = url;
+          contacts[0].linkedinUrl = linkedinUrl;
         }
       }
     }

@@ -9,9 +9,18 @@
   "scripts": {
     "dev": "turbo run dev",
     "build": "turbo run build",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "clean": "turbo run clean && rm -rf node_modules",
+    "db:generate": "pnpm --filter @leadforge/db generate",
     "db:migrate": "pnpm --filter @leadforge/db migrate",
+    "db:push": "pnpm --filter @leadforge/db push",
     "db:seed": "pnpm --filter @leadforge/db seed",
-    "worker": "pnpm --filter @leadforge/workers start"
+    "db:studio": "pnpm --filter @leadforge/db studio",
+    "worker": "pnpm --filter @leadforge/workers dev",
+    "worker:start": "pnpm --filter @leadforge/workers start",
+    "api": "pnpm --filter @leadforge/api dev",
+    "web": "pnpm --filter @leadforge/web dev"
   },
   "devDependencies": {
     "turbo": "^2.0.0",

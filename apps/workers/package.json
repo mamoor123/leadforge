@@ -1,0 +1,23 @@
+{
+  "name": "@leadforge/workers",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./src/search-worker.ts",
+  "scripts": {
+    "dev": "tsx watch src/search-worker.ts",
+    "build": "tsc",
+    "start": "node dist/search-worker.js",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@leadforge/db": "workspace:*",
+    "@leadforge/shared": "workspace:*",
+    "bullmq": "^5.7.0",
+    "ioredis": "^5.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "tsx": "^4.11.0",
+    "typescript": "^5.4.0"
+  }
+}

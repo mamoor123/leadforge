@@ -73,10 +73,8 @@ A signal-driven lead intelligence platform that finds businesses the *moment* th
 ┌──────────────────────▼──────────────────────────────┐
 │                    DATA LAYER                        │
 │                                                      │
-│  PostgreSQL (leads, users, CRM)                      │
+│  PostgreSQL (leads, users, CRM, full-text search)     │
 │  Redis (queues, caching, rate limits)                │
-│  Elasticsearch (lead search, filters)                │
-│  S3 (PDF reports, exports)                           │
 └─────────────────────────────────────────────────────┘
 ```
 
@@ -86,12 +84,12 @@ A signal-driven lead intelligence platform that finds businesses the *moment* th
 
 | Layer | Choice | Why |
 |---|---|---|
-| Frontend | Next.js 14 + Tailwind + shadcn/ui | Fast dev, great DX, SSR for SEO |
-| API | Node.js + Fastify + tRPC | Type-safe, fast, solo-friendly |
+| Frontend | Next.js 14 + Tailwind CSS | Fast dev, great DX, SSR for SEO |
+| API | Node.js + Fastify + JWT auth | Fast, type-safe, built-in auth |
 | Database | PostgreSQL + Prisma | Relational fits lead data perfectly |
 | Queue | BullMQ + Redis | Battle-tested job processing |
-| Search | Meilisearch (lightweight) or Elasticsearch | Lead filtering & full-text search |
-| Auth | Clerk or NextAuth | Don't build auth from scratch |
+| Search | PostgreSQL full-text search | Lead filtering & full-text search |
+| Auth | Fastify JWT (built-in) | Simple, no external dependency |
 | Email | Resend (sending) + custom IMAP (receiving) | Good deliverability + reply detection |
 | AI | OpenAI / Claude API | Scoring, pitch generation, analysis |
 | Scraping | Playwright + Crawlee | Reliable, handles JS-rendered sites |

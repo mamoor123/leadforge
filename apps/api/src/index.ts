@@ -38,6 +38,15 @@ await server.register(billingRoutes, { prefix: '/api/billing' });
 // Health check
 server.get('/health', async () => ({ status: 'ok', version: '0.1.0' }));
 
+// Graceful shutdown — disconnect Prisma on exit
+const shutdown = async () => {
+  console.log('Shutting down...');
+  await server.close();
+  process.exit(0);
+};
+process.on('SIGTERM', shutdown);
+process.on('SIGINT', shutdown);
+
 const port = parseInt(process.env.PORT || '4000');
 await server.listen({ port, host: '0.0.0.0' });
 console.log(`🔥 LeadForge API running on port ${port}`);
