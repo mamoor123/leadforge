@@ -3,14 +3,26 @@
 
 import { Worker, Queue } from 'bullmq';
 import { PrismaClient } from '@leadforge/db';
-import { searchBusinesses } from '@leadforge/shared';
-import { analyzeWebsite } from '@leadforge/shared';
-import { scoreLead } from '@leadforge/shared';
-import { detectSignals, aggregateSignals } from '@leadforge/shared';
-import { generateEmailPitch } from '@leadforge/shared';
+import {
+  searchBusinesses,
+  analyzeWebsite,
+  scoreLead,
+  detectSignals,
+  aggregateSignals,
+  generateEmailPitch,
+} from '@leadforge/shared';
 
 const prisma = new PrismaClient();
-const connection = { host: process.env.REDIS_HOST || 'localhost', port: 6379 };
+
+const REDIS_PORT = Number(process.env.REDIS_PORT) || 6379;
+const REDIS_HOST = process.env.REDIS_HOST || 'localhost';
+const WORKER_CONCURRENCY = Number(process.env.WORKER_CONCURRENCY) || 3;
+
+const connection = {
+  host: REDIS_HOST,
+  port: REDIS_PORT,
+  maxRetriesPerRequest: null, // Required by BullMQ
+};
 
 export const leadQueue = new Queue('lead-processing', { connection });
 
@@ -32,6 +44,10 @@ const searchWorker = new Worker('lead-processing', async (job) => {
       country,
       maxResults: maxResults || 20,
     });
+
+    if (!Array.isArray(places)) {
+      throw new Error('searchBusinesses returned a non-array result');
+    }
 
     console.log(`📍 Found ${places.length} businesses`);
 
@@ -58,16 +74,21 @@ const searchWorker = new Worker('lead-processing', async (job) => {
           }
         }
 
-        // Detect signals
-        const signals = await detectSignals(
-          '', // leadId not yet created
-          place.website,
-          place.placeId,
-          niche,
-          city,
-        );
-
-        const aggregatedSignals = aggregateSignals(signals);
+        // Detect signals — don't let signal detection failure kill the lead
+        let signals: Awaited<ReturnType<typeof detectSignals>> = [];
+        let aggregatedSignals = { topSignals: [] as any[], summary: '' };
+        try {
+          signals = await detectSignals(
+            '', // leadId not yet created — will be linked after lead insert
+            place.website,
+            place.placeId,
+            niche,
+            city,
+          );
+          aggregatedSignals = aggregateSignals(signals);
+        } catch (e) {
+          console.warn(`⚠️ Signal detection failed for ${place.name}:`, (e as Error).message);
+        }
 
         // Score the lead
         const score = scoreLead({
@@ -122,30 +143,30 @@ const searchWorker = new Worker('lead-processing', async (job) => {
             socialScore: score.social,
             reviewScore: score.reviews,
             signalScore: score.signals,
-            websiteIssues: (websiteAnalysis?.issues || null) as any,
-            analysisData: (websiteAnalysis || null) as any,
-            signalData: (aggregatedSignals.topSignals || null) as any,
+            websiteIssues: (websiteAnalysis?.issues ?? null) as any,
+            analysisData: (websiteAnalysis ?? null) as any,
+            signalData: (aggregatedSignals.topSignals ?? null) as any,
             // Extract social links
-            linkedinUrl: websiteAnalysis?.social.linkedinUrl,
-            facebookUrl: websiteAnalysis?.social.facebookUrl,
-            instagramUrl: websiteAnalysis?.social.instagramUrl,
-            twitterUrl: websiteAnalysis?.social.twitterUrl,
-            yelpUrl: websiteAnalysis?.social.yelpUrl,
+            linkedinUrl: websiteAnalysis?.social?.linkedinUrl,
+            facebookUrl: websiteAnalysis?.social?.facebookUrl,
+            instagramUrl: websiteAnalysis?.social?.instagramUrl,
+            twitterUrl: websiteAnalysis?.social?.twitterUrl,
+            yelpUrl: websiteAnalysis?.social?.yelpUrl,
             // Extract tech
-            cms: websiteAnalysis?.techStack.cms,
-            analytics: websiteAnalysis?.techStack.analytics?.[0] || null,
-            hosting: websiteAnalysis?.techStack.hosting,
-            adTech: websiteAnalysis?.techStack.advertising || [],
+            cms: websiteAnalysis?.techStack?.cms,
+            analytics: websiteAnalysis?.techStack?.analytics?.[0] ?? null,
+            hosting: websiteAnalysis?.techStack?.hosting,
+            adTech: websiteAnalysis?.techStack?.advertising ?? [],
             // Save pitch
             enrichedAt: new Date(),
             scoredAt: new Date(),
           },
         });
 
-        // Save signals
-        for (const signal of signals) {
-          await prisma.signal.create({
-            data: {
+        // Batch-insert signals instead of one-by-one
+        if (signals.length > 0) {
+          await prisma.signal.createMany({
+            data: signals.map(signal => ({
               leadId: lead.id,
               type: signal.type as any,
               severity: signal.severity,
@@ -154,7 +175,7 @@ const searchWorker = new Worker('lead-processing', async (job) => {
               data: signal.data,
               detectedAt: signal.detectedAt,
               expiresAt: signal.expiresAt,
-            },
+            })),
           });
         }
 
@@ -174,11 +195,15 @@ const searchWorker = new Worker('lead-processing', async (job) => {
       }
     }
 
-    // Update search record
-    await prisma.search.update({
-      where: { id: searchId },
-      data: { resultCount: leads.length },
-    });
+    // Update search record — don't fail the entire job if only this write fails
+    try {
+      await prisma.search.update({
+        where: { id: searchId },
+        data: { resultCount: leads.length },
+      });
+    } catch (error) {
+      console.error(`⚠️ Failed to update search record ${searchId}:`, (error as Error).message);
+    }
 
     // Sort by score and return
     leads.sort((a, b) => b.overallScore - a.overallScore);
@@ -202,7 +227,9 @@ const searchWorker = new Worker('lead-processing', async (job) => {
     console.error(`❌ Search failed:`, error);
     throw error;
   }
-}, { connection, concurrency: 3 });
+}, { connection, concurrency: WORKER_CONCURRENCY });
+
+// ─── Event Handlers ─────────────────────────────────────────
 
 searchWorker.on('completed', (job) => {
   console.log(`✅ Job ${job.id} completed`);
@@ -211,5 +238,22 @@ searchWorker.on('completed', (job) => {
 searchWorker.on('failed', (job, err) => {
   console.error(`❌ Job ${job?.id} failed:`, err.message);
 });
+
+searchWorker.on('error', (err) => {
+  console.error('❌ Worker error:', err.message);
+});
+
+// ─── Graceful Shutdown ──────────────────────────────────────
+
+const shutdown = async () => {
+  console.log('🛑 Shutting down search worker...');
+  await searchWorker.close();
+  await leadQueue.close();
+  await prisma.$disconnect();
+  process.exit(0);
+};
+
+process.on('SIGTERM', shutdown);
+process.on('SIGINT', shutdown);
 
 export { searchWorker };
