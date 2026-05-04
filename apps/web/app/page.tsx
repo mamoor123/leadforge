@@ -1,7 +1,7 @@
 // LeadForge Dashboard — Main page
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 
 interface Lead {
   id: string;
@@ -48,6 +48,7 @@ export default function Dashboard() {
   const [error, setError] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const consecutiveErrorsRef = useRef(0);
 
   // Cleanup polling on unmount
   useEffect(() => {
@@ -57,12 +58,19 @@ export default function Dashboard() {
     };
   }, []);
 
+  // Memoize sorted leads to avoid re-sorting on every render
+  const sortedLeads = useMemo(
+    () => [...leads].sort((a, b) => b.overallScore - a.overallScore),
+    [leads]
+  );
+
   const handleSearch = useCallback(async () => {
     if (!niche || !city) return;
     setSearching(true);
     setError(null);
     setLeads([]);
     setSelectedLead(null);
+    consecutiveErrorsRef.current = 0;
 
     // Clear any existing poll
     if (pollRef.current) clearInterval(pollRef.current);
@@ -89,6 +97,9 @@ export default function Dashboard() {
             if (!statusRes.ok) throw new Error('Failed to fetch leads');
             const statusData = await statusRes.json();
 
+            // Reset consecutive error count on success
+            consecutiveErrorsRef.current = 0;
+
             if (statusData.leads?.length > 0) {
               setLeads(statusData.leads);
               setSearching(false);
@@ -97,7 +108,15 @@ export default function Dashboard() {
             }
           } catch (pollErr) {
             console.error('Polling error:', pollErr);
-            // Don't stop polling on transient errors, just log
+            consecutiveErrorsRef.current += 1;
+
+            // Stop polling after 3 consecutive errors instead of silently failing
+            if (consecutiveErrorsRef.current >= 3) {
+              if (pollRef.current) clearInterval(pollRef.current);
+              if (pollTimeoutRef.current) clearTimeout(pollTimeoutRef.current);
+              setSearching(false);
+              setError('Lost connection to search service. Please try again.');
+            }
           }
         }, 3000);
 
@@ -105,8 +124,6 @@ export default function Dashboard() {
         pollTimeoutRef.current = setTimeout(() => {
           if (pollRef.current) clearInterval(pollRef.current);
           setSearching(false);
-          // Always show timeout error — the polling callback clears this
-          // timeout when leads are found, so reaching here means no results
           setError('Search timed out. Please try again.');
         }, 60000);
       } else {
@@ -174,7 +191,7 @@ export default function Dashboard() {
               >
                 {searching ? (
                   <span className="flex items-center gap-2">
-                    <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                    <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24" aria-hidden="true">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                     </svg>
@@ -190,6 +207,24 @@ export default function Dashboard() {
         {error && (
           <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 mb-8" role="alert">
             <p className="text-red-400 text-sm">{error}</p>
+          </div>
+        )}
+
+        {/* Loading State */}
+        {searching && leads.length === 0 && (
+          <div className="text-center py-12" aria-live="polite">
+            <svg className="animate-spin h-8 w-8 mx-auto mb-4 text-orange-500" viewBox="0 0 24 24" aria-hidden="true">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            </svg>
+            <p className="text-gray-400">Searching for leads...</p>
+          </div>
+        )}
+
+        {/* Live region for screen readers when results load */}
+        {leads.length > 0 && (
+          <div aria-live="polite" className="sr-only">
+            Found {leads.length} leads. Showing sorted by score.
           </div>
         )}
 
@@ -227,9 +262,7 @@ export default function Dashboard() {
             <div className="col-span-5">
               <h3 className="text-lg font-semibold mb-4">Leads</h3>
               <div className="space-y-3">
-                {[...leads]
-                  .sort((a, b) => b.overallScore - a.overallScore)
-                  .map((lead) => (
+                {sortedLeads.map((lead) => (
                     <LeadCard
                       key={lead.id}
                       lead={lead}
@@ -377,16 +410,17 @@ function ScoreMini({ label, value, highlight }: {
   value: number;
   highlight?: boolean;
 }) {
-  const color = value >= 70 ? 'bg-red-500' :
-                value >= 50 ? 'bg-orange-500' :
-                value >= 30 ? 'bg-yellow-500' : 'bg-gray-700';
+  const clampedValue = Math.min(100, Math.max(0, value));
+  const color = clampedValue >= 70 ? 'bg-red-500' :
+                clampedValue >= 50 ? 'bg-orange-500' :
+                clampedValue >= 30 ? 'bg-yellow-500' : 'bg-gray-700';
 
   return (
     <div className="text-center">
       <div className="h-1.5 bg-gray-800 rounded-full overflow-hidden mb-1">
         <div
-          className={`h-full rounded-full ${highlight && value > 0 ? 'bg-orange-500' : color}`}
-          style={{ width: `${value}%` }}
+          className={`h-full rounded-full ${highlight && clampedValue > 0 ? 'bg-orange-500' : color}`}
+          style={{ width: `${clampedValue}%` }}
         />
       </div>
       <div className="text-[10px] text-gray-500">{label}</div>
@@ -437,8 +471,8 @@ function LeadDetail({ lead }: { lead: Lead }) {
         <div className="mb-6">
           <h4 className="text-sm font-semibold text-orange-400 mb-3">⚡ Active Signals</h4>
           <div className="space-y-2">
-            {signals.map((signal, i) => (
-              <div key={i} className="bg-orange-500/10 border border-orange-500/20 rounded-lg p-3">
+            {signals.map((signal) => (
+              <div key={signal.title} className="bg-orange-500/10 border border-orange-500/20 rounded-lg p-3">
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-sm">{signal.title}</span>
                   <span className="text-xs text-orange-400">{signal.severity}/100</span>
@@ -455,8 +489,8 @@ function LeadDetail({ lead }: { lead: Lead }) {
         <div className="mb-6">
           <h4 className="text-sm font-semibold text-red-400 mb-3">🚨 Issues Found</h4>
           <div className="space-y-2">
-            {issues.slice(0, 8).map((issue, i) => (
-              <div key={i} className="bg-gray-800 rounded-lg p-3">
+            {issues.slice(0, 8).map((issue) => (
+              <div key={issue.title} className="bg-gray-800 rounded-lg p-3">
                 <div className="flex items-center justify-between mb-1">
                   <span className="font-medium text-sm">{issue.title}</span>
                   <SeverityBadge severity={issue.severity} />
