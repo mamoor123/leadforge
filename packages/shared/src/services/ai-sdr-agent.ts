@@ -119,6 +119,30 @@ export interface AgentLearning {
 
 // ─── Main Agent Loop ────────────────────────────────────────
 
+interface LeadRecord {
+  id: string;
+  businessName: string;
+  website: string | null;
+  phone: string | null;
+  city: string | null;
+  state: string | null;
+  niche: string;
+  googlePlaceId: string;
+  googleRating: number | null;
+  googleReviewCount: number | null;
+  contactName?: string;
+  contactEmail: string | null;
+  contactTitle?: string;
+  contactLinkedin?: string;
+  analysisData: any;
+  signalData: any;
+  pipelineStage: string;
+  overallScore?: number;
+  enrichedAt?: Date;
+  scoredAt?: Date;
+  lastContactedAt?: Date;
+}
+
 export class ForgeAgent {
   private config: AgentConfig;
   private state: AgentState;
@@ -771,8 +795,8 @@ ${this.config.userName}`,
   private async updateLearnings() {
     // This would analyze conversion data and update the learnings
     // For now, just log the stats
-    const conversionRate = this.state.stats.totalOutcomes > 0
-      ? this.state.stats.positiveOutcomes / this.state.stats.totalOutcomes
+    const conversionRate = this.state.learnings.totalOutcomes > 0
+      ? this.state.learnings.positiveOutcomes / this.state.learnings.totalOutcomes
       : 0;
 
     console.log(`📊 Agent Stats: ${JSON.stringify(this.state.stats)}`);
@@ -789,8 +813,8 @@ ${this.config.userName}`,
       topLead: this.state.queue
         .filter(a => a.leadId)
         .sort((a, b) => b.priority - a.priority)[0]?.description || 'None',
-      conversionRate: this.state.stats.totalOutcomes > 0
-        ? `${((this.state.stats.positiveOutcomes / this.state.stats.totalOutcomes) * 100).toFixed(1)}%`
+      conversionRate: this.state.learnings.totalOutcomes > 0
+        ? `${((this.state.learnings.positiveOutcomes / this.state.learnings.totalOutcomes) * 100).toFixed(1)}%`
         : 'N/A',
     };
 
@@ -887,14 +911,14 @@ ${this.config.userName}`,
   }
 
   // Database stubs (implement with your ORM)
-  private async findExistingLead(googlePlaceId: string) { return null; }
-  private async createLead(place: any, niche: string, city: string) { return { id: '', businessName: '', website: '', phone: '', city: '', state: '', niche: '', googlePlaceId: '', googleRating: null, googleReviewCount: null, contactEmail: null, analysisData: null, signalData: null, pipelineStage: 'NEW' }; }
-  private async getLead(id: string) { return null; }
+  private async findExistingLead(googlePlaceId: string): Promise<LeadRecord | null> { return null; }
+  private async createLead(place: any, niche: string, city: string): Promise<LeadRecord> { return { id: '', businessName: '', website: '', phone: '', city: '', state: '', niche: '', googlePlaceId: '', googleRating: null, googleReviewCount: null, contactEmail: null, analysisData: null, signalData: null, pipelineStage: 'NEW' }; }
+  private async getLead(id: string): Promise<LeadRecord | null> { return null; }
   private async updateLead(id: string, data: any) {}
-  private async getUnenrichedLeads(limit: number) { return []; }
-  private async getUnscoredLeads(limit: number) { return []; }
-  private async getLeadsForSignalCheck(limit: number) { return []; }
+  private async getUnenrichedLeads(limit: number): Promise<LeadRecord[]> { return []; }
+  private async getUnscoredLeads(limit: number): Promise<LeadRecord[]> { return []; }
+  private async getLeadsForSignalCheck(limit: number): Promise<LeadRecord[]> { return []; }
   private async logActivity(leadId: string, type: string, detail: string) {}
-  private async checkForReplies() { return []; }
+  private async checkForReplies(): Promise<Array<{ leadId: string; content: string }>> { return []; }
   private async removeFromSequence(leadId: string) {}
 }

@@ -76,7 +76,7 @@ export function scoreLead(lead: LeadData): ScoreBreakdown {
 
   const reasoning = generateReasoning(lead, {
     overall, website, seo, social, reviews, signals, opportunity, urgency, budget,
-    reasoning: '',
+
   });
 
   return {
