@@ -1,7 +1,7 @@
 // Report Routes — Generate audit reports
 import type { FastifyInstance } from 'fastify';
 import { prisma } from '../lib/prisma';
-import { generateReportData } from '@leadforge/shared/services/outreach-engine';
+import { generateReportData } from '@leadforge/shared';
 
 export async function reportRoutes(app: FastifyInstance) {
   // Generate report data for a lead
@@ -33,7 +33,7 @@ export async function reportRoutes(app: FastifyInstance) {
         budget: 0,
         reasoning: '',
       },
-      signals: lead.signals.map((s) => ({
+      signals: lead.signals.map((s: any) => ({
         type: s.type,
         title: s.title,
         description: s.description || '',

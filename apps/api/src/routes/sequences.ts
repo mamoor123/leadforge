@@ -1,7 +1,7 @@
 // Outreach Sequences Route
 import type { FastifyInstance } from 'fastify';
 import { prisma } from '../lib/prisma';
-import { generateEmailPitch, generateLinkedInPitch, generateSMSPitch, type OutreachContext } from '@leadforge/shared/services/outreach-engine';
+import { generateEmailPitch, generateLinkedInPitch, generateSMSPitch, type OutreachContext } from '@leadforge/shared';
 
 export async function sequenceRoutes(app: FastifyInstance) {
   // List sequences
@@ -142,12 +142,12 @@ export async function sequenceRoutes(app: FastifyInstance) {
     const enrollments = sequence.enrollments;
     return {
       total: enrollments.length,
-      active: enrollments.filter(e => e.status === 'ACTIVE').length,
-      completed: enrollments.filter(e => e.status === 'COMPLETED').length,
-      replied: enrollments.filter(e => e.status === 'REPLIED').length,
-      bounced: enrollments.filter(e => e.status === 'BOUNCED').length,
+      active: enrollments.filter((e: any) => e.status === 'ACTIVE').length,
+      completed: enrollments.filter((e: any) => e.status === 'COMPLETED').length,
+      replied: enrollments.filter((e: any) => e.status === 'REPLIED').length,
+      bounced: enrollments.filter((e: any) => e.status === 'BOUNCED').length,
       replyRate: enrollments.length > 0
-        ? Math.round((enrollments.filter(e => e.repliedAt).length / enrollments.length) * 100)
+        ? Math.round((enrollments.filter((e: any) => e.repliedAt).length / enrollments.length) * 100)
         : 0,
     };
   });
