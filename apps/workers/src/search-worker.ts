@@ -122,9 +122,9 @@ const searchWorker = new Worker('lead-processing', async (job) => {
             socialScore: score.social,
             reviewScore: score.reviews,
             signalScore: score.signals,
-            websiteIssues: websiteAnalysis?.issues || null,
-            analysisData: websiteAnalysis || null,
-            signalData: aggregatedSignals.topSignals || null,
+            websiteIssues: (websiteAnalysis?.issues || null) as any,
+            analysisData: (websiteAnalysis || null) as any,
+            signalData: (aggregatedSignals.topSignals || null) as any,
             // Extract social links
             linkedinUrl: websiteAnalysis?.social.linkedinUrl,
             facebookUrl: websiteAnalysis?.social.facebookUrl,
@@ -164,7 +164,7 @@ const searchWorker = new Worker('lead-processing', async (job) => {
             leadId: lead.id,
             type: 'SIGNAL_DETECTED',
             detail: `Lead scored ${score.overall}/100. ${aggregatedSignals.summary}`,
-            metadata: { score, signals: signals.length },
+            metadata: { score: score as any, signals: signals.length },
           },
         });
 

@@ -66,7 +66,10 @@ export async function leadRoutes(app: FastifyInstance) {
 
     const updated = await prisma.lead.update({
       where: { id },
-      data: updates,
+      data: {
+        ...updates,
+        pipelineStage: updates.pipelineStage as any,
+      },
     });
 
     // Log activity if stage changed
