@@ -3,11 +3,11 @@
 
 import { Worker, Queue } from 'bullmq';
 import { PrismaClient } from '@leadforge/db';
-import { searchBusinesses } from '@leadforge/shared/services/google-places';
-import { analyzeWebsite } from '@leadforge/shared/services/website-analyzer';
-import { scoreLead } from '@leadforge/shared/services/lead-scorer';
-import { detectSignals, aggregateSignals } from '@leadforge/shared/services/signal-engine';
-import { generateEmailPitch } from '@leadforge/shared/services/outreach-engine';
+import { searchBusinesses } from '@leadforge/shared';
+import { analyzeWebsite } from '@leadforge/shared';
+import { scoreLead } from '@leadforge/shared';
+import { detectSignals, aggregateSignals } from '@leadforge/shared';
+import { generateEmailPitch } from '@leadforge/shared';
 
 const prisma = new PrismaClient();
 const connection = { host: process.env.REDIS_HOST || 'localhost', port: 6379 };
