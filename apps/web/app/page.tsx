@@ -105,17 +105,20 @@ export default function Dashboard() {
         pollTimeoutRef.current = setTimeout(() => {
           if (pollRef.current) clearInterval(pollRef.current);
           setSearching(false);
-          if (leads.length === 0) {
-            setError('Search timed out. Please try again.');
-          }
+          // Always show timeout error — the polling callback clears this
+          // timeout when leads are found, so reaching here means no results
+          setError('Search timed out. Please try again.');
         }, 60000);
+      } else {
+        setSearching(false);
+        setError('Search failed: no search ID returned. Please try again.');
       }
     } catch (err) {
       console.error('Search failed:', err);
       setError(err instanceof Error ? err.message : 'Search failed. Please try again.');
       setSearching(false);
     }
-  }, [niche, city, leads.length]);
+  }, [niche, city]);
 
   return (
     <div className="min-h-screen bg-gray-950 text-white">
@@ -224,7 +227,7 @@ export default function Dashboard() {
             <div className="col-span-5">
               <h3 className="text-lg font-semibold mb-4">Leads</h3>
               <div className="space-y-3">
-                {leads
+                {[...leads]
                   .sort((a, b) => b.overallScore - a.overallScore)
                   .map((lead) => (
                     <LeadCard
