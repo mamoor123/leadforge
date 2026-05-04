@@ -9,6 +9,7 @@ import { crmRoutes } from './routes/crm';
 import { authRoutes } from './routes/auth';
 import { reportRoutes } from './routes/reports';
 import { billingRoutes } from './routes/billing';
+import { prisma } from './lib/prisma';
 
 const server = Fastify({ logger: true });
 
@@ -41,6 +42,7 @@ server.get('/health', async () => ({ status: 'ok', version: '0.1.0' }));
 // Graceful shutdown — disconnect Prisma on exit
 const shutdown = async () => {
   console.log('Shutting down...');
+  await prisma.$disconnect();
   await server.close();
   process.exit(0);
 };

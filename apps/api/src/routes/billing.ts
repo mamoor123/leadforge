@@ -4,12 +4,16 @@ import { prisma } from '../lib/prisma';
 
 export async function billingRoutes(app: FastifyInstance) {
   // Get current plan
-  app.get('/plan', { preHandler: [app.authenticate] }, async (request) => {
+  app.get('/plan', { preHandler: [app.authenticate] }, async (request, reply) => {
     const userId = (request.user as any).id;
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: { plan: true, stripeCustomerId: true },
     });
+
+    if (!user) {
+      return reply.status(404).send({ error: 'User not found' });
+    }
 
     const planLimits: Record<string, { searches: number; signals: boolean; sequences: number }> = {
       FREE: { searches: 10, signals: false, sequences: 0 },
@@ -19,9 +23,9 @@ export async function billingRoutes(app: FastifyInstance) {
     };
 
     return {
-      plan: user?.plan || 'FREE',
-      limits: planLimits[user?.plan || 'FREE'],
-      stripeCustomerId: user?.stripeCustomerId,
+      plan: user.plan,
+      limits: planLimits[user.plan] || planLimits['FREE'],
+      stripeCustomerId: user.stripeCustomerId,
     };
   });
 

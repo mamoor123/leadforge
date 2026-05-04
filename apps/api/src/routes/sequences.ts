@@ -17,11 +17,19 @@ export async function sequenceRoutes(app: FastifyInstance) {
   // Create sequence
   app.post('/', { preHandler: [app.authenticate] }, async (request, reply) => {
     const userId = (request.user as any).id;
-    const { name, channel, steps } = request.body as {
-      name: string;
-      channel: 'EMAIL' | 'LINKEDIN' | 'SMS';
-      steps: Array<{ subject?: string; bodyTemplate: string; delayDays: number }>;
-    };
+    const body = request.body as {
+      name?: string;
+      channel?: 'EMAIL' | 'LINKEDIN' | 'SMS';
+      steps?: Array<{ subject?: string; bodyTemplate: string; delayDays: number }>;
+    } | undefined;
+
+    const name = body?.name;
+    const channel = body?.channel;
+    const steps = body?.steps;
+
+    if (!name || !channel || !steps || !Array.isArray(steps) || steps.length === 0) {
+      return reply.status(400).send({ error: 'name, channel, and at least one step are required' });
+    }
 
     const sequence = await prisma.sequence.create({
       data: {
@@ -46,8 +54,13 @@ export async function sequenceRoutes(app: FastifyInstance) {
   // Enroll leads in sequence
   app.post('/:sequenceId/enroll', { preHandler: [app.authenticate] }, async (request, reply) => {
     const { sequenceId } = request.params as { sequenceId: string };
-    const { leadIds } = request.body as { leadIds: string[] };
+    const body = request.body as { leadIds?: string[] } | undefined;
+    const leadIds = body?.leadIds;
     const userId = (request.user as any).id;
+
+    if (!leadIds || !Array.isArray(leadIds) || leadIds.length === 0) {
+      return reply.status(400).send({ error: 'leadIds array is required' });
+    }
 
     // Verify ownership
     const sequence = await prisma.sequence.findFirst({ where: { id: sequenceId, userId } });
@@ -90,8 +103,14 @@ export async function sequenceRoutes(app: FastifyInstance) {
 
   // Generate AI pitch for a lead
   app.post('/generate-pitch', { preHandler: [app.authenticate] }, async (request, reply) => {
-    const { leadId, channel } = request.body as { leadId: string; channel: string };
+    const body = request.body as { leadId?: string; channel?: string } | undefined;
+    const leadId = body?.leadId;
+    const channel = body?.channel;
     const userId = (request.user as any).id;
+
+    if (!leadId || !channel) {
+      return reply.status(400).send({ error: 'leadId and channel are required' });
+    }
 
     const lead = await prisma.lead.findFirst({ where: { id: leadId, userId } });
     if (!lead) return reply.status(404).send({ error: 'Lead not found' });

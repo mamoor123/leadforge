@@ -18,19 +18,25 @@ export async function leadRoutes(app: FastifyInstance) {
     const where: any = { userId };
     if (niche) where.niche = { contains: niche, mode: 'insensitive' };
     if (city) where.city = { contains: city, mode: 'insensitive' };
-    if (minScore) where.overallScore = { gte: parseInt(minScore) };
+    if (minScore) {
+      const score = parseInt(minScore);
+      if (!isNaN(score)) where.overallScore = { gte: score };
+    }
     if (stage) where.pipelineStage = stage;
+
+    const parsedLimit = parseInt(limit || '50');
+    const parsedOffset = parseInt(offset || '0');
 
     const leads = await prisma.lead.findMany({
       where,
       orderBy: { overallScore: 'desc' },
-      take: parseInt(limit || '50'),
-      skip: parseInt(offset || '0'),
+      take: isNaN(parsedLimit) ? 50 : parsedLimit,
+      skip: isNaN(parsedOffset) ? 0 : parsedOffset,
     });
 
     const total = await prisma.lead.count({ where });
 
-    return { leads, total, limit: parseInt(limit || '50'), offset: parseInt(offset || '0') };
+    return { leads, total, limit: isNaN(parsedLimit) ? 50 : parsedLimit, offset: isNaN(parsedOffset) ? 0 : parsedOffset };
   });
 
   // Get lead detail
@@ -64,12 +70,15 @@ export async function leadRoutes(app: FastifyInstance) {
     const lead = await prisma.lead.findFirst({ where: { id, userId } });
     if (!lead) return reply.status(404).send({ error: 'Lead not found' });
 
+    // Explicitly pick allowed fields to prevent mass-assignment of userId, createdAt, etc.
+    const data: Record<string, unknown> = {};
+    if (updates.pipelineStage !== undefined) data.pipelineStage = updates.pipelineStage;
+    if (updates.notes !== undefined) data.notes = updates.notes;
+    if (updates.tags !== undefined) data.tags = updates.tags;
+
     const updated = await prisma.lead.update({
       where: { id },
-      data: {
-        ...updates,
-        pipelineStage: updates.pipelineStage as any,
-      },
+      data: data as any,
     });
 
     // Log activity if stage changed

@@ -40,7 +40,12 @@ export async function crmRoutes(app: FastifyInstance) {
   app.post('/leads/:leadId/notes', { preHandler: [app.authenticate] }, async (request, reply) => {
     const { leadId } = request.params as { leadId: string };
     const userId = (request.user as any).id;
-    const { content } = request.body as { content: string };
+    const body = request.body as { content?: string } | undefined;
+    const content = body?.content;
+
+    if (!content) {
+      return reply.status(400).send({ error: 'content is required' });
+    }
 
     const lead = await prisma.lead.findFirst({ where: { id: leadId, userId } });
     if (!lead) return reply.status(404).send({ error: 'Lead not found' });

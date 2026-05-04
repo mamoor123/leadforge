@@ -6,13 +6,19 @@ import { leadQueue } from '@leadforge/workers';
 export async function searchRoutes(app: FastifyInstance) {
   // Full search pipeline
   app.post('/', { preHandler: [app.authenticate] }, async (request, reply) => {
-    const { niche, city, state, country, maxResults } = request.body as {
-      niche: string;
-      city: string;
+    const body = request.body as {
+      niche?: string;
+      city?: string;
       state?: string;
       country?: string;
       maxResults?: number;
-    };
+    } | undefined;
+
+    const niche = body?.niche;
+    const city = body?.city;
+    const state = body?.state;
+    const country = body?.country;
+    const maxResults = body?.maxResults;
 
     if (!niche || !city) {
       return reply.status(400).send({ error: 'niche and city are required' });
@@ -51,7 +57,7 @@ export async function searchRoutes(app: FastifyInstance) {
       city,
       state,
       country,
-      maxResults: maxResults || 20,
+      maxResults: maxResults && maxResults > 0 ? maxResults : 20,
     });
 
     return {
@@ -94,6 +100,8 @@ export async function searchRoutes(app: FastifyInstance) {
     const validSortFields = ['overallScore', 'businessName', 'createdAt'] as const;
     const sortField = validSortFields.includes(sortBy as any) ? sortBy : 'overallScore';
 
+    const parsedLimit = typeof limit === 'number' ? limit : parseInt(String(limit)) || 50;
+
     const leads = await prisma.lead.findMany({
       where: {
         searchId,
@@ -101,7 +109,7 @@ export async function searchRoutes(app: FastifyInstance) {
         ...(minScore ? { overallScore: { gte: minScore } } : {}),
       },
       orderBy: { [sortField!]: 'desc' },
-      take: limit || 50,
+      take: parsedLimit,
     });
 
     return { leads, count: leads.length };

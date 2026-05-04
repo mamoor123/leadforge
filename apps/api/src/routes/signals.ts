@@ -17,7 +17,12 @@ export async function signalRoutes(app: FastifyInstance) {
       expiresAt: { gte: new Date() },
     };
     if (type) where.type = type;
-    if (minSeverity) where.severity = { gte: parseInt(minSeverity) };
+    if (minSeverity) {
+      const severity = parseInt(minSeverity);
+      if (!isNaN(severity)) where.severity = { gte: severity };
+    }
+
+    const parsedLimit = parseInt(limit || '50');
 
     const signals = await prisma.signal.findMany({
       where,
@@ -25,7 +30,7 @@ export async function signalRoutes(app: FastifyInstance) {
         lead: { select: { id: true, businessName: true, niche: true, city: true, overallScore: true } },
       },
       orderBy: { severity: 'desc' },
-      take: parseInt(limit || '50'),
+      take: isNaN(parsedLimit) ? 50 : parsedLimit,
     });
 
     return { signals, count: signals.length };
@@ -53,7 +58,8 @@ export async function signalRoutes(app: FastifyInstance) {
     }
 
     for (const key of Object.keys(summary)) {
-      summary[key].avgSeverity = Math.round(summary[key].avgSeverity / summary[key].count);
+      const entry = summary[key];
+      entry.avgSeverity = entry.count > 0 ? Math.round(entry.avgSeverity / entry.count) : 0;
     }
 
     return { summary, totalActive: signals.length };
