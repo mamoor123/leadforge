@@ -2,7 +2,7 @@
 // Runs async: scrape Google → analyze websites → score leads → generate pitches
 
 import { Worker, Queue } from 'bullmq';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '@leadforge/db';
 import { searchBusinesses } from '@leadforge/shared/services/google-places';
 import { analyzeWebsite } from '@leadforge/shared/services/website-analyzer';
 import { scoreLead } from '@leadforge/shared/services/lead-scorer';
