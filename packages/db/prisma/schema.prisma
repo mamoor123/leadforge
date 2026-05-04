@@ -1,0 +1,320 @@
+// LeadForge Database Schema
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Users & Auth ───────────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  passwordHash  String?
+  plan          Plan      @default(FREE)
+  stripeCustomerId String? @unique
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  searches      Search[]
+  leads         Lead[]
+  sequences     Sequence[]
+  campaigns     Campaign[]
+  signalMonitors SignalMonitor[]
+  apiKeys       ApiKey[]
+}
+
+enum Plan {
+  FREE
+  STARTER
+  PRO
+  AGENCY
+}
+
+model ApiKey {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String?
+  lastUsed  DateTime?
+  createdAt DateTime @default(now())
+}
+
+// ─── Searches ───────────────────────────────────────────────
+
+model Search {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  niche     String
+  city      String
+  state     String?
+  country   String   @default("US")
+  resultCount Int    @default(0)
+  createdAt DateTime @default(now())
+
+  leads     Lead[]
+}
+
+// ─── Leads ──────────────────────────────────────────────────
+
+model Lead {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  searchId        String?
+  search          Search?   @relation(fields: [searchId], references: [id])
+
+  // Basic info
+  businessName    String
+  niche           String
+  website         String?
+  phone           String?
+  email           String?
+  address         String?
+  city            String?
+  state           String?
+  zip             String?
+  country         String?
+
+  // Google data
+  googlePlaceId   String?
+  googleRating    Float?
+  googleReviewCount Int?
+  googleUrl       String?
+
+  // Social
+  linkedinUrl     String?
+  facebookUrl     String?
+  instagramUrl    String?
+  twitterUrl      String?
+  yelpUrl         String?
+
+  // Decision maker
+  contactName     String?
+  contactEmail    String?
+  contactTitle    String?
+  contactLinkedin String?
+
+  // Tech stack
+  cms             String?
+  analytics       String?
+  hosting         String?
+  adTech          String[]
+
+  // Scores (0-100)
+  overallScore    Int       @default(0)
+  websiteScore    Int       @default(0)
+  seoScore        Int       @default(0)
+  socialScore     Int       @default(0)
+  reviewScore     Int       @default(0)
+  signalScore     Int       @default(0)  // NEW: signal-based score
+
+  // Analysis
+  websiteIssues   Json?     // structured list of issues found
+  seoIssues       Json?
+  analysisData    Json?     // full analysis dump
+  signalData      Json?     // recent signals detected
+
+  // CRM
+  pipelineStage   PipelineStage @default(NEW)
+  notes           String?
+  lastContactedAt DateTime?
+  tags            String[]
+
+  // Meta
+  enrichedAt      DateTime?
+  scoredAt        DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  activities      Activity[]
+  sequenceEnrollments SequenceEnrollment[]
+  signals         Signal[]
+
+  @@index([userId, overallScore(sort: Desc)])
+  @@index([userId, pipelineStage])
+  @@index([userId, niche, city])
+}
+
+enum PipelineStage {
+  NEW
+  CONTACTED
+  REPLIED
+  MEETING
+  PROPOSAL
+  WON
+  LOST
+  IGNORED
+}
+
+// ─── Signals ────────────────────────────────────────────────
+
+model Signal {
+  id          String      @id @default(cuid())
+  leadId      String
+  lead        Lead        @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  type        SignalType
+  severity    Int         @default(50) // 0-100, higher = more urgent
+  title       String
+  description String?
+  data        Json?
+  detectedAt  DateTime    @default(now())
+  expiresAt   DateTime?   // time-decay: older signals lose weight
+
+  @@index([leadId, detectedAt(sort: Desc)])
+  @@index([type, detectedAt(sort: Desc)])
+}
+
+enum SignalType {
+  BAD_REVIEW_SPIKE
+  SITE_DOWN
+  DOMAIN_EXPIRING
+  NEW_JOB_POSTING
+  COMPETITOR_CLOSED
+  OWNERSHIP_CHANGE
+  FUNDING_ROUND
+  TECH_STACK_CHANGE
+  REVIEW_VELOCITY_DROP
+  SSL_EXPIRING
+  PAGE_SPEED_DROP
+  SOCIAL_INACTIVE
+  AD_SPEND_STOPPED
+  CUSTOM
+}
+
+model SignalMonitor {
+  id          String      @id @default(cuid())
+  userId      String
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  niche       String
+  city        String
+  state       String?
+  frequency   MonitorFrequency @default(DAILY)
+  isActive    Boolean     @default(true)
+  lastRunAt   DateTime?
+  createdAt   DateTime    @default(now())
+
+  @@unique([userId, niche, city])
+}
+
+enum MonitorFrequency {
+  HOURLY
+  DAILY
+  WEEKLY
+}
+
+// ─── Outreach Sequences ─────────────────────────────────────
+
+model Sequence {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  channel     Channel   @default(EMAIL)
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  steps       SequenceStep[]
+  enrollments SequenceEnrollment[]
+}
+
+enum Channel {
+  EMAIL
+  LINKEDIN
+  SMS
+}
+
+model SequenceStep {
+  id          String    @id @default(cuid())
+  sequenceId  String
+  sequence    Sequence  @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
+  order       Int
+  subject     String?   // for email
+  bodyTemplate String   // AI-personalized at send time
+  delayDays   Int       @default(0) // days after previous step
+  isActive    Boolean   @default(true)
+
+  @@unique([sequenceId, order])
+}
+
+model SequenceEnrollment {
+  id          String    @id @default(cuid())
+  sequenceId  String
+  sequence    Sequence  @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
+  leadId      String
+  lead        Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  currentStep Int       @default(0)
+  status      EnrollmentStatus @default(ACTIVE)
+  enrolledAt  DateTime  @default(now())
+  completedAt DateTime?
+  repliedAt   DateTime?
+
+  @@unique([sequenceId, leadId])
+  @@index([status, currentStep])
+}
+
+enum EnrollmentStatus {
+  ACTIVE
+  PAUSED
+  COMPLETED
+  REPLIED
+  BOUNCED
+  UNSUBSCRIBED
+}
+
+// ─── Campaigns (bulk operations) ────────────────────────────
+
+model Campaign {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  niche       String
+  city        String
+  status      CampaignStatus @default(DRAFT)
+  leadCount   Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+enum CampaignStatus {
+  DRAFT
+  RUNNING
+  PAUSED
+  COMPLETED
+}
+
+// ─── Activity Log ───────────────────────────────────────────
+
+model Activity {
+  id        String   @id @default(cuid())
+  leadId    String
+  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  type      ActivityType
+  detail    String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([leadId, createdAt(sort: Desc)])
+}
+
+enum ActivityType {
+  NOTE
+  EMAIL_SENT
+  EMAIL_OPENED
+  EMAIL_REPLIED
+  STAGE_CHANGED
+  CALL
+  MEETING
+  PROPOSAL_SENT
+  SIGNAL_DETECTED
+  SCORE_UPDATED
+}
