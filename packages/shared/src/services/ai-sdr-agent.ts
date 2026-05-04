@@ -94,6 +94,7 @@ export interface AgentState {
   status: 'running' | 'paused' | 'stopped';
   startedAt: Date;
   lastActionAt: Date;
+  lastDiscoveryAt: Date | null;
   stats: {
     leadsDiscovered: number;
     contactsEnriched: number;
@@ -154,6 +155,7 @@ export class ForgeAgent {
       status: 'stopped',
       startedAt: new Date(),
       lastActionAt: new Date(),
+      lastDiscoveryAt: null,
       stats: {
         leadsDiscovered: 0,
         contactsEnriched: 0,
@@ -241,8 +243,8 @@ export class ForgeAgent {
 
   private shouldDiscover(): boolean {
     // Discover once per day for each niche+city combo
-    const lastDiscover = this.state.lastActionAt;
-    const hoursSince = (Date.now() - lastDiscover.getTime()) / (1000 * 60 * 60);
+    if (!this.state.lastDiscoveryAt) return true;
+    const hoursSince = (Date.now() - this.state.lastDiscoveryAt.getTime()) / (1000 * 60 * 60);
     return hoursSince >= 24;
   }
 
@@ -275,6 +277,7 @@ export class ForgeAgent {
         }
       }
     }
+    this.state.lastDiscoveryAt = new Date();
   }
 
   // ─── Enrichment ───────────────────────────────────────────

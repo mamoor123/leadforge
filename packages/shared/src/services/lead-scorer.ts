@@ -365,7 +365,7 @@ function generateReasoning(lead: LeadData, scores: Omit<ScoreBreakdown, 'reasoni
 
   // Signal highlights
   if (lead.signals.length > 0) {
-    const recent = lead.signals
+    const recent = [...lead.signals]
       .sort((a, b) => b.detectedAt.getTime() - a.detectedAt.getTime())
       .slice(0, 3);
     parts.push(`Recent signals: ${recent.map(s => s.description).join('; ')}.`);

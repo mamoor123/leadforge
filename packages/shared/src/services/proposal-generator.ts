@@ -418,8 +418,9 @@ function estimateROI(lead: any, solutions: ProposedSolution[]): ROIEstimate {
     return sum + (s.service.priceType === 'one-time' ? s.service.price : s.service.price * 3);
   }, 0);
 
-  const breakEvenMonths = totalInvestment / monthlyRevenueIncrease;
-  const roiPercentage = ((annualRevenueIncrease - totalInvestment * 2) / (totalInvestment * 2)) * 100;
+  const breakEvenMonths = monthlyRevenueIncrease > 0 ? totalInvestment / monthlyRevenueIncrease : Infinity;
+  const investmentBase = totalInvestment * 2;
+  const roiPercentage = investmentBase > 0 ? ((annualRevenueIncrease - investmentBase) / investmentBase) * 100 : 0;
 
   return {
     monthlyRevenueIncrease,

@@ -491,6 +491,7 @@ export async function checkDomainHealth(domain: string): Promise<{
       const response = await fetch(`https://whoisjsonapi.com/v1/${domain}`, {
         headers: { 'Authorization': `Bearer ${whoisApiKey}` },
       });
+      if (!response.ok) throw new Error(`WHOIS API error: ${response.status}`);
       const data = await response.json() as any;
       if (data.domain?.created_date) {
         domainAge = Math.floor((Date.now() - new Date(data.domain.created_date).getTime()) / 86400000);

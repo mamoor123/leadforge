@@ -52,6 +52,9 @@ export async function searchBusinesses(params: SearchParams): Promise<PlaceResul
     }
 
     const response = await fetch(searchUrl.toString());
+    if (!response.ok) {
+      throw new Error(`Google Places API HTTP error: ${response.status} ${response.statusText}`);
+    }
     const data = await response.json() as any;
 
     if (data.status !== 'OK' && data.status !== 'ZERO_RESULTS') {
@@ -94,6 +97,7 @@ async function enrichPlaceDetails(place: PlaceResult): Promise<PlaceResult> {
     url.searchParams.set('key', GOOGLE_API_KEY!); // safe: only called after searchBusinesses validates key
 
     const response = await fetch(url.toString());
+    if (!response.ok) return place;
     const data = await response.json() as any;
 
     if (data.result) {

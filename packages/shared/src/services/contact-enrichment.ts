@@ -65,7 +65,7 @@ export async function enrichContact(
 
   // Deduplicate and verify
   const unique = deduplicateContacts(contacts);
-  const verificationResults = domain ? await verifyEmails(unique, domain) : [];
+  const verificationResults = domain ? await verifyEmails(unique) : [];
 
   return {
     contacts: unique,
@@ -85,6 +85,7 @@ async function extractFromWebsite(url: string): Promise<EnrichedContact[]> {
     const timeout = setTimeout(() => controller.abort(), 10000);
     const response = await fetch(url, { signal: controller.signal });
     clearTimeout(timeout);
+    if (!response.ok) return contacts;
     const html = await response.text();
 
     // Extract emails
@@ -146,7 +147,6 @@ async function extractFromWebsite(url: string): Promise<EnrichedContact[]> {
     if (linkedinMatch) {
       for (const linkedinUrl of linkedinMatch.slice(0, 2)) {
         // Try to get name from LinkedIn URL
-        const slug = linkedinUrl.split('/').pop();
         if (contacts.length > 0 && !contacts[0].linkedinUrl) {
           contacts[0].linkedinUrl = linkedinUrl;
         }
@@ -166,19 +166,6 @@ async function detectEmailPattern(domain: string): Promise<Array<{
   confidence: number;
   sample: string;
 }>> {
-  const commonPatterns = [
-    '{first}@{domain}',
-    '{first}.{last}@{domain}',
-    '{f}{last}@{domain}',
-    '{first}{last}@{domain}',
-    '{first}_{last}@{domain}',
-    '{last}@{domain}',
-    'info@{domain}',
-    'contact@{domain}',
-    'hello@{domain}',
-    'support@{domain}',
-  ];
-
   // Try to verify common patterns
   const results: Array<{ pattern: string; confidence: number; sample: string }> = [];
 
@@ -277,7 +264,6 @@ async function searchLinkedIn(
 
 async function verifyEmails(
   contacts: EnrichedContact[],
-  domain: string,
 ): Promise<EmailVerification[]> {
   const results: EmailVerification[] = [];
 

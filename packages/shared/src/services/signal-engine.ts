@@ -208,8 +208,6 @@ async function checkReviewSpike(
 
     if (!result || !previousReviews) return null;
 
-    const newReviewCount = result.user_ratings_total - previousReviews.count;
-
     // Check for negative review spike
     if (result.reviews) {
       const recentNegative = result.reviews.filter(
@@ -340,8 +338,6 @@ async function checkNewJobPostings(niche: string, city: string): Promise<Signal[
     const response = await fetch(
       `https://serpapi.com/search.json?engine=google_jobs&q=${encodeURIComponent(query)}&api_key=${apiKey}`
     );
-    const data = await response.json() as any;
-
     // If a business is hiring, they're growing and might need services
     // This is more useful at the individual business level
     return signals;

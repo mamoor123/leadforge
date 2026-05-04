@@ -190,6 +190,7 @@ async function fetchHtml(url: string): Promise<string> {
       },
       redirect: 'follow',
     });
+    if (!response.ok) return '';
     return await response.text();
   } finally {
     clearTimeout(timeout);
@@ -263,15 +264,13 @@ async function analyzeSSL(url: string): Promise<SSLData> {
 // ─── SEO Analysis ───────────────────────────────────────────
 
 function analyzeSEO(html: string, url: string): SEOData {
-  const $ = (selector: string) => extractElements(html, selector);
-
   const title = extractTagContent(html, 'title');
   const metaDesc = extractMetaContent(html, 'description');
   const h1s = extractHeadings(html, 'h1');
   const h2s = extractHeadings(html, 'h2');
 
   const hasCanonical = /rel=["']canonical["']/i.test(html);
-  const hasRobotsTxt = true; // would need separate check
+  const hasRobotsTxt = /robot/i.test(html) || /disallow/i.test(html); // heuristic from HTML; full check needs /robots.txt
   const hasSitemap = /<sitemap>/i.test(html) || /sitemap\.xml/i.test(html);
   const hasSchema = /application\/ld\+json/i.test(html);
   const schemaTypes = extractSchemaTypes(html);
@@ -693,11 +692,6 @@ function extractMetaProperty(html: string, property: string): string | null {
   const match = html.match(new RegExp(`<meta[^>]*property=["']${property}["'][^>]*content=["']([^"']+)["']`, 'i'))
     || html.match(new RegExp(`<meta[^>]*content=["']([^"']+)["'][^>]*property=["']${property}["']`, 'i'));
   return match ? match[1].trim() : null;
-}
-
-function extractElements(html: string, selector: string): string[] {
-  // Simplified — real impl would use cheerio
-  return [];
 }
 
 function extractHeadings(html: string, tag: string): string[] {
